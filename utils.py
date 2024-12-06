@@ -33,17 +33,6 @@ def bollinger_band_comb(df):
     return df
 
 def calculate_rsi(df, period, thr_h, thr_l, plot_):
-    """
-    Calculate the Relative Strength Index (RSI) and generate Buy/Sell/Hold signals for a given price column in a Polars DataFrame.
-    
-    Parameters:
-    - df: Polars DataFrame with a price column.
-    - price_column: Name of the column containing the closing prices.
-    - period: The period over which the RSI is calculated (default is 14).
-    
-    Returns:
-    - Polars DataFrame with the added 'RSI' and 'signal' columns.
-    """
     df = df.with_columns(
         (pl.col('Close').diff().alias("price_change"))
     )
@@ -67,9 +56,9 @@ def calculate_rsi(df, period, thr_h, thr_l, plot_):
     )
     
     df = df.with_columns(
-        pl.when(pl.col("RSI"+"_"+str(period)+"_"+str(thr_l)+"_"+str(thr_h)) < thr_l).then(1)  # Buy signal
-        .when(pl.col("RSI"+"_"+str(period)+"_"+str(thr_l)+"_"+str(thr_h)) > thr_h).then(-1)   # Sell signal
-        .otherwise(0).alias("signal_rsi"+"_"+str(period)+"_"+str(thr_l)+"_"+str(thr_h))       # Hold signal
+        pl.when(pl.col("RSI"+"_"+str(period)+"_"+str(thr_l)+"_"+str(thr_h)) < thr_l).then(1) 
+        .when(pl.col("RSI"+"_"+str(period)+"_"+str(thr_l)+"_"+str(thr_h)) > thr_h).then(-1)  
+        .otherwise(0).alias("signal_rsi"+"_"+str(period)+"_"+str(thr_l)+"_"+str(thr_h))     
     )
 
     if plot_ == False:
@@ -85,17 +74,7 @@ def rsi_comb(df):
     return df
 
 def calculate_stochastic_oscillator(df, period, smooth_period, plot_):
-    """
-    Calculate the Stochastic Oscillator (%K and %D) for a given price DataFrame.
-    
-    Parameters:
-    - df: Polars DataFrame with columns 'High', 'Low', and 'Close'.
-    - period: Lookback period for %K calculation (default is 14).
-    - smooth_period: Period for smoothing the %K to calculate %D (default is 3).
-    
-    Returns:
-    - Polars DataFrame with added %K and %D columns.
-    """
+
     df = df.with_columns(
         pl.col('Low').rolling_min(window_size=period, min_periods=1).alias('Lowest_Low')
     )
@@ -215,16 +194,7 @@ def obv_comb(df):
     return df
 
 def calculate_williams_r(df, period, plot_):
-    """
-    Calculate Williams %R for a given price DataFrame.
-    
-    Parameters:
-    - df: Polars DataFrame with columns 'high', 'low', and 'close'.
-    - period: Lookback period for calculating the highest high and lowest low (default is 14).
-    
-    Returns:
-    - Polars DataFrame with an added 'Williams_R' column.
-    """
+
     df = df.with_columns([
         pl.col("High").rolling_max(window_size=period, min_periods=1).alias("Highest_High"),
         pl.col("Low").rolling_min(window_size=period, min_periods=1).alias("Lowest_Low")
@@ -250,14 +220,12 @@ def calculate_adx(df, period, plot_):
         (pl.col("High") - pl.col("Close").shift(1)).abs().alias("TR2"),
         (pl.col("Low") - pl.col("Close").shift(1)).abs().alias("TR3")
     ])
-
     df = df.with_columns(
         pl.max_horizontal('TR1', 'TR2', 'TR3').alias('True_Range')
     )
-
     df = df.with_columns([
-        pl.when(pl.col("High") - pl.col("High").shift(1) > pl.col("Low").shift(1) - pl.col("Low"))
-          .then(pl.col("High") - pl.col("High").shift(1))
+        pl.when(pl.col("High") -pl.col("High").shift(1) > pl.col("Low").shift(1) - pl.col("Low"))
+          .then(pl.col("High") -pl.col("High").shift(1))
           .otherwise(0)
           .alias("Positive_DM"),
         
@@ -268,13 +236,13 @@ def calculate_adx(df, period, plot_):
     ])
 
     df = df.with_columns([
-        pl.col("Positive_DM").rolling_mean(window_size=period, min_periods=1).alias("Smoothed_Positive_DM"),
+         pl.col("Positive_DM").rolling_mean(window_size=period, min_periods=1).alias("Smoothed_Positive_DM"),
         pl.col("Negative_DM").rolling_mean(window_size=period, min_periods=1).alias("Smoothed_Negative_DM"),
         pl.col("True_Range").rolling_mean(window_size=period, min_periods=1).alias("Smoothed_True_Range")
     ])
     
     df = df.with_columns([
-        (pl.col("Smoothed_Positive_DM") / pl.col("Smoothed_True_Range") * 100).alias("Positive_DI"),
+         (pl.col("Smoothed_Positive_DM") /pl.col("Smoothed_True_Range") * 100).alias("Positive_DI"),
         (pl.col("Smoothed_Negative_DM") / pl.col("Smoothed_True_Range") * 100).alias("Negative_DI")
     ])
     
@@ -285,7 +253,8 @@ def calculate_adx(df, period, plot_):
     if plot_==False:
         df = df.drop(['TR1', 'TR2', 'TR3', 'True_Range',
                       'Positive_DM', 'Negative_DM', 'Smoothed_Positive_DM',
-                      'Smoothed_Negative_DM', 'Smoothed_True_Range', 'Positive_DI', 'Negative_DI'])
+                      'Smoothed_Negative_DM', 'Smoothed_True_Range',
+                      'Positive_DI', 'Negative_DI'])
         df = df.rename({"ADX": "adx"+ "_"+str(period)})
     
     return df
@@ -297,16 +266,7 @@ def adx_comb(df):
     return df
 
 def calculate_aroon_pandas(df, period=14):
-    """
-    Calculate the Aroon Indicator (Aroon Up, Aroon Down, and Aroon Oscillator) for a Pandas DataFrame.
-    
-    Parameters:
-    - df: Pandas DataFrame with columns 'High' and 'Low'.
-    - period: The period to calculate the Aroon Indicator (default is 14).
-    
-    Returns:
-    - Pandas DataFrame with Aroon Up, Aroon Down, and Aroon Oscillator columns.
-    """
+
     df['Aroon_Up'] = df['High'].rolling(window=period, min_periods=1).apply(lambda x: period - x.argmax(), raw=False)
     df['Aroon_Down'] = df['Low'].rolling(window=period, min_periods=1).apply(lambda x: period - x.argmin(), raw=False)
     
@@ -318,17 +278,7 @@ def calculate_aroon_pandas(df, period=14):
     return df
 
 def convert_and_calculate_aroon(df, period, plot_):
-    """
-    Convert a Polars DataFrame to Pandas, calculate the Aroon Indicator, 
-    and then convert it back to Polars.
-    
-    Parameters:
-    - df: Polars DataFrame with columns 'Date', 'High', and 'Low'.
-    - period: The period to calculate the Aroon Indicator (default is 14).
-    
-    Returns:
-    - Polars DataFrame with Aroon Up, Aroon Down, and Aroon Oscillator columns.
-    """
+
     df_pandas = df.to_pandas()
     df_pandas = calculate_aroon_pandas(df_pandas, period)
 
@@ -346,9 +296,7 @@ def aroon_comb(df):
     return df
 
 def calculate_atr2(df, period=14):
-    """
-    Calculate the Average True Range (ATR) for a given DataFrame.
-    """
+
     df = df.with_columns([
         (pl.col("High") - pl.col("Low")).alias("TR1"),
         (pl.col("High") - pl.col("Close").shift(1)).abs().alias("TR2"),
@@ -366,17 +314,7 @@ def calculate_atr2(df, period=14):
     return df
 
 def calculate_keltner_channels(df, period=20, atr_multiplier=2):
-    """
-    Calculate Keltner Channels (upper, middle, lower) for a given DataFrame.
-    
-    Parameters:
-    - df: Polars DataFrame with 'Close', 'High', 'Low'.
-    - period: Period for calculating the EMA and ATR (default 20).
-    - atr_multiplier: Multiplier for ATR (default 2).
-    
-    Returns:
-    - Polars DataFrame with 'Upper', 'Middle', 'Lower' Keltner Channels.
-    """
+
     df = df.with_columns(
         pl.col("Close").ewm_mean(com=period-1).alias("Middle") 
     )
@@ -391,17 +329,7 @@ def calculate_keltner_channels(df, period=20, atr_multiplier=2):
     return df
 
 def calculate_keltner_percent(df, period, atr_multiplier, plot_):
-    """
-    Calculate Keltner % (Keltner Channel %).
-    
-    Parameters:
-    - df: Polars DataFrame with 'Close', 'High', 'Low'.
-    - period: Period for calculating the EMA and ATR (default 20).
-    - atr_multiplier: Multiplier for ATR (default 2).
-    
-    Returns:
-    - Polars DataFrame with 'Keltner%' column.
-    """
+
     df = calculate_keltner_channels(df, period=period, atr_multiplier=atr_multiplier)
     
     df = df.with_columns(
@@ -416,17 +344,7 @@ def calculate_keltner_percent(df, period, atr_multiplier, plot_):
 
 
 def calculate_keltner_channels(df, period=20, atr_multiplier=2):
-    """
-    Calculate Keltner Channels (upper, middle, lower) for a given DataFrame.
-    
-    Parameters:
-    - df: Polars DataFrame with 'Close', 'High', 'Low'.
-    - period: Period for calculating the EMA and ATR (default 20).
-    - atr_multiplier: Multiplier for ATR (default 2).
-    
-    Returns:
-    - Polars DataFrame with 'Upper', 'Middle', 'Lower' Keltner Channels.
-    """
+
     df = df.with_columns(
         pl.col("Close").ewm_mean(com=period-1).alias("Middle") 
     )
@@ -441,17 +359,7 @@ def calculate_keltner_channels(df, period=20, atr_multiplier=2):
     return df
 
 def calculate_keltner_percent(df, period, atr_multiplier, plot_):
-    """
-    Calculate Keltner % (Keltner Channel %).
-    
-    Parameters:
-    - df: Polars DataFrame with 'Close', 'High', 'Low'.
-    - period: Period for calculating the EMA and ATR (default 20).
-    - atr_multiplier: Multiplier for ATR (default 2).
-    
-    Returns:
-    - Polars DataFrame with 'Keltner%' column.
-    """
+
     df = calculate_keltner_channels(df, period=period, atr_multiplier=atr_multiplier)
     
     df = df.with_columns(
@@ -485,16 +393,7 @@ def keltner_comb(df):
     return df
 
 def calculate_cmf(df, period, plot_):
-    """
-    Calculate the Chaikin Money Flow (CMF) for a given DataFrame.
-    
-    Parameters:
-    - df: Polars DataFrame with columns 'High', 'Low', 'Close', 'Volume'.
-    - period: Period for calculating the CMF (default is 20).
-    
-    Returns:
-    - Polars DataFrame with the 'CMF' column.
-    """
+
     
     df = df.with_columns(
             (((pl.col("Close") - pl.col("Low")) - (pl.col("High") - pl.col("Close"))) /(pl.col("High") - pl.col("Low"))).alias("Money_Flow_Multiplier")
@@ -619,24 +518,23 @@ def generate_orders(data, n_shares, initial_cash, clf, var):
         order = df_order.iloc[i]['order_2']
         close_price = df_order.iloc[i]['Close']
         
-        if order == 1:  # Buy
+        if order == 1: 
             df_order.loc[df_order.index[i], 'Cash_2'] = df_order.iloc[i-1]['Cash_2'] - close_price
-        elif order == -1:  # Sell
+        elif order == -1:  
             df_order.loc[df_order.index[i], 'Cash_2'] = df_order.iloc[i-1]['Cash_2'] + close_price
-        else:  # No action
+        else:  
             df_order.loc[df_order.index[i], 'Cash_2'] = df_order.iloc[i-1]['Cash_2']
 
     df_order['portfolio_value_2'] = df_order['Cash_2'] + (df_order['holdings_2']*df_order['Close'])
     return df_order
 
-def get_stats(port_val):  		  	   		 	   			  		 			 	 	 		 		 	
-    daily_rets = (port_val / port_val.shift(1)) - 1  		  	   		 	   			  		 			 	 	 		 		 	
-    daily_rets = daily_rets[1:]  		  	   		 	   			  		 			 	 	 		 		 	
-    avg_daily_ret = daily_rets.mean()  		  	   		 	   			  		 			 	 	 		 		 	
-    std_daily_ret = daily_rets.std()  		  	   		 	   			  		 			 	 	 		 		 	
-    sharpe_ratio = np.sqrt(252) * daily_rets.mean() / std_daily_ret
-    cr = (port_val[-1]/port_val[0])- 1.0 	  	   		 	   			  		 			 	 	 		 		 	
-    return cr, std_daily_ret, avg_daily_ret, sharpe_ratio
+def portfolio_stats(portfolio_value):  		  	   		 	   			  		 			 	 	 		 		 	
+    daily_rets = (portfolio_value / portfolio_value.shift(1)) - 1  		  	   		 	   			  		 			 	 	 		 		 	
+    daily_rets = daily_rets[1:]  		  	   		 	   			  		 			 	 	 		 		 		  	   		 	   			  		 			 	 	 		 		 	
+    cumulative_return = (portfolio_value[-1]/portfolio_value[0])- 1.0
+    mean_daily_ret = daily_rets.mean()  		  	   		 	   			  		 			 	 	 		 		 	
+    std_daily_ret = daily_rets.std()   	   		 	   			  		 			 	 	 		 		 	
+    return cumulative_return, std_daily_ret, mean_daily_ret
 
 def generate_testing_orders(data, symbol, clf, var, n_shares, initial_cash):
     info = yh.Ticker(symbol)
